@@ -1,11 +1,6 @@
-# ===============================
-# Base image
-# ===============================
 FROM python:3.10-slim
 
-# ===============================
-# Install system dependencies
-# ===============================
+# Install system dependencies + build tools
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
@@ -18,18 +13,17 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     fonts-liberation \
     libgtk-3-0 \
+    build-essential \
+    python3-dev \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-# ===============================
 # Install Chrome
-# ===============================
 RUN wget -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
     && apt-get install -y /tmp/chrome.deb \
     && rm /tmp/chrome.deb
 
-# ===============================
-# Install chromedriver
-# ===============================
+# Install chromedriver (sesuai versi Chrome)
 RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+') && \
     DRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION") && \
     wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip" && \
@@ -37,41 +31,27 @@ RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+') && \
     rm /tmp/chromedriver.zip && \
     chmod +x /usr/local/bin/chromedriver
 
-# ===============================
-# Set working directory
-# ===============================
+# Working directory
 WORKDIR /app
 
-# ===============================
 # Copy requirements
-# ===============================
 COPY requirements.txt .
 
-# ===============================
+# Upgrade pip, setuptools, wheel
+RUN pip install --upgrade pip setuptools wheel
+
 # Install Python dependencies
-# ===============================
-RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ===============================
 # Copy project files
-# ===============================
 COPY . .
 
-# ===============================
-# Set environment variables for Streamlit
-# ===============================
+# Streamlit env
 ENV STREAMLIT_SERVER_HEADLESS=true
 ENV STREAMLIT_SERVER_PORT=8080
 ENV STREAMLIT_SERVER_ENABLE_CORS=false
 ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-# ===============================
-# Expose port
-# ===============================
 EXPOSE 8080
 
-# ===============================
-# Run Streamlit
-# ===============================
 CMD ["streamlit", "run", "website.py", "--server.port=8080", "--server.address=0.0.0.0"]
