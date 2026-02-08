@@ -37,8 +37,9 @@ st.caption("Input link tweet (X) → website akan mengambil reply dari tweet ter
 # =========================
 # PATHS / PARAMS (HARDCODE)
 # =========================
-ARTIFACT_MODEL_PATH = "lstm_sentiment.keras"
 ARTIFACT_TOKENIZER_PATH = "tokenizer.pkl"
+ARTIFACT_EMBEDDING_PATH = "embedding_matrix.npy"
+ARTIFACT_WEIGHTS_PATH = "lstm_weights.h5"
 ARTIFACT_LABEL_ENCODER_PATH = "config.json"
 
 COOKIES_JSON_PATH = "cookies.json"   # <- cookies kamu (file)
@@ -430,13 +431,31 @@ def top_words_tfidf(texts, top_n=5):
 # LOAD ARTIFACTS
 # =========================
 @st.cache_resource
-def load_artifacts():
-    model = tf.keras.models.load_model(ARTIFACT_MODEL_PATH, compile=False)
+def build_model(vocab_size, embedding_matrix):
+        model = tf.keras.Sequential([
+            tf.keras.layers.Input(shape=(100,), name="input_ids"),
+            tf.keras.layers.Embedding(
+                vocab_size,
+                300,
+                weights=[embedding_matrix],
+                trainable=False,
+                mask_zero=True
+            ),
+            tf.keras.layers.LSTM(64),
+            tf.keras.layers.Dense(3, activation="softmax")
+        ])
+        return model
 
-    model.build((None, MAX_LEN))
-    
+def load_artifacts():
+
     with open(ARTIFACT_TOKENIZER_PATH, "rb") as f:
         tokenizer = pickle.load(f)
+    
+    embedding_matrix = np.load(ARTIFACT_EMBEDDING_PATH)
+    vocab_size = embedding_matrix.shape[0]
+    
+    model = build_model(vocab_size, embedding_matrix)
+    model.load_weights(ARTIFACT_WEIGHTS_PATH)
 
     with open(ARTIFACT_LABEL_ENCODER_PATH, "r", encoding="utf-8") as f:
         config = json.load(f)
@@ -552,5 +571,4 @@ if "last_df" in st.session_state:
     )
 
     st.subheader("5 Kata Paling Sering Muncul")
-
     st.dataframe(top_df, use_container_width=True)
