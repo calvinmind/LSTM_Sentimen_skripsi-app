@@ -228,7 +228,7 @@ def scrape_replies_selenium(tweet_url: str):
             load_cookies(driver, COOKIES_JSON_PATH)
 
         driver.get(tweet_url)
-        time.sleep(3)
+        time.sleep(6)
 
         # close popup (kalau ada)
         try:
@@ -236,7 +236,11 @@ def scrape_replies_selenium(tweet_url: str):
         except Exception:
             pass
 
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "article")))
+        wait.until(
+            EC.presence_of_element_located(
+                (By.XPATH, "//article | //div[@data-testid='tweet']")
+            )
+        )
 
         # --- ambil teks tweet utama (berdasarkan status/<tweet_id>) ---
         main_tweet = ""
@@ -564,3 +568,4 @@ if "last_df" in st.session_state:
 
     st.subheader("5 Kata Paling Sering Muncul")
     st.dataframe(top_df, use_container_width=True)
+
