@@ -199,6 +199,8 @@ def setup_driver(headless=True):
     options.add_argument("--headless")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1200")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()),
@@ -568,4 +570,5 @@ if "last_df" in st.session_state:
 
     st.subheader("5 Kata Paling Sering Muncul")
     st.dataframe(top_df, use_container_width=True)
+
 
