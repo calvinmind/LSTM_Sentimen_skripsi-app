@@ -1,25 +1,26 @@
 [phases.setup]
-nixPkgs = [
-  "glib",
-  "nss",
-  "atk",
-  "cups",
-  "dbus",
-  "libdrm",
-  "pango",
-  "cairo",
-  "alsa-lib",
+aptPkgs = [
+  "libglib2.0-0",
+  "libnss3",
+  "libatk-bridge2.0-0",
+  "libatk1.0-0",
+  "libcups2",
+  "libdrm2",
+  "libxkbcommon0",
+  "libxcomposite1",
+  "libxdamage1",
+  "libxfixes3",
+  "libxrandr2",
+  "libgbm1",
+  "libasound2",
+  "libpangocairo-1.0-0",
+  "libpango-1.0-0",
+  "libcairo2",
+  "fonts-liberation"
+]
 
-  "xorg.libX11",
-  "xorg.libXScrnSaver",
-  "xorg.libXcomposite",
-  "xorg.libXcursor",
-  "xorg.libXdamage",
-  "xorg.libXfixes",
-  "xorg.libXi",
-  "xorg.libXrandr",
-  "xorg.libXrender",
-  "xorg.libXtst",
-  "xorg.libxcb",
-  "xorg.libxshmfence"
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "playwright install chromium"
 ]
