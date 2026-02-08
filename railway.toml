@@ -1,5 +1,6 @@
 [build]
 builder = "NIXPACKS"
+buildCommand = "playwright install chromium"
 
 [deploy]
-startCommand = "playwright install --with-deps chromium && streamlit run main.py --server.port $PORT --server.address 0.0.0.0"
+startCommand = "streamlit run main.py --server.port $PORT --server.address 0.0.0.0"
