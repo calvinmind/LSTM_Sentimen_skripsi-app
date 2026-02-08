@@ -1,3 +1,8 @@
+import asyncio
+import sys
+
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 import re
 import json
 import time
@@ -14,17 +19,12 @@ from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
+
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import streamlit.components.v1 as components
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from playwright.sync_api import sync_playwright
+
 
 
 # =========================
@@ -194,195 +194,113 @@ def load_cookies(driver, cookies_path: str, base_url="https://x.com/"):
     time.sleep(2)
 
 
-def setup_driver(headless=True):
-    opts = Options()
-    if headless:
-        opts.add_argument("--headless=new")
 
-    opts.add_argument("--disable-gpu")
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--window-size=1280,900")
-    opts.add_argument("--lang=en-US")
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.add_argument("--log-level=3")
-    opts.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    )
-
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=opts)
-    driver.set_page_load_timeout(40)
-    return driver
-
-
-def scrape_replies_selenium(tweet_url: str):
-    """
-    Scrape reply lebih rapat (minim gap):
-    - scroll ke bawah pakai scrollHeight
-    - stop jika reply >= REPLY_LIMIT atau stuck beberapa ronde
-    - cookies diambil dari COOKIES_JSON_PATH (kalau USE_COOKIES=True)
-    """
-    driver = setup_driver(headless=True)
-    wait = WebDriverWait(driver, 15)
-
+def scrape_replies_playwright(tweet_url: str):
     tweet_id = extract_tweet_id(tweet_url)
     if not tweet_id:
-        driver.quit()
-        raise ValueError("Tweet URL tidak valid (tidak ada /status/<id>).")
+        raise ValueError("Tweet URL tidak valid.")
 
-    try:
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+                "--disable-gpu"
+            ]
+        )
+
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+
+        # load cookies
         if USE_COOKIES:
-            load_cookies(driver, COOKIES_JSON_PATH)
+            with open(COOKIES_JSON_PATH, "r", encoding="utf-8") as f:
+                cookies = json.load(f)
+            for c in cookies:
+                c.pop("sameSite", None)
+            context.add_cookies(cookies)
 
-        driver.get(tweet_url)
-        time.sleep(3)
+        page = context.new_page()
+        page.goto(tweet_url, timeout=60000)
+        page.wait_for_selector("article", timeout=20000)
 
-        # close popup (kalau ada)
+        # tweet utama
+        main_tweet = ""
         try:
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+            blocks = page.locator(
+                f"article a[href*='/status/{tweet_id}'] >> xpath=ancestor::article"
+            ).locator("div[data-testid='tweetText']")
+            main_tweet = " ".join(blocks.all_inner_texts()).strip()
         except Exception:
             pass
 
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "article")))
-
-        # --- ambil teks tweet utama (berdasarkan status/<tweet_id>) ---
-        main_tweet = ""
-        try:
-            main_blocks = driver.find_elements(
-                By.XPATH,
-                f"//article[.//a[contains(@href,'/status/{tweet_id}')]]//div[@data-testid='tweetText']"
-            )
-            main_tweet = " ".join([b.text for b in main_blocks]).strip()
-        except Exception:
-            main_tweet = ""
-
-        # simpan reply dalam urutan kemunculan
         replies = []
-        seen_keys = set()
+        seen = set()
 
-        def norm(s: str) -> str:
-            return re.sub(r"\s+", " ", (s or "").strip())
+        def collect_replies():
+            articles = page.locator("article")
+            for i in range(articles.count()):
+                art = articles.nth(i)
 
-        def get_status_id(article):
-            """ambil /status/<id> dari artikel (lebih aman daripada dedup teks)"""
-            try:
-                links = article.find_elements(By.XPATH, ".//a[contains(@href,'/status/')]")
-                for a in links:
-                    href = a.get_attribute("href") or ""
-                    m = re.search(r"/status/(\d+)", href)
-                    if m:
-                        return m.group(1)
-            except Exception:
-                pass
-            return None
-
-        def click_expand_buttons_aggressive():
-            """
-            Klik tombol expand berulang sampai tidak ada tombol baru yg bisa diklik.
-            Ini penting karena X sering memunculkan tombol expand bertahap.
-            """
-            xpaths = [
-                # EN
-                "//span[contains(.,'Show more replies')]/ancestor::button",
-                "//span[contains(.,'Show replies')]/ancestor::button",
-                "//span[contains(.,'More replies')]/ancestor::button",
-                "//span[contains(.,'Show')]/ancestor::button",
-                # ID (bervariasi)
-                "//span[contains(.,'Lihat')]/ancestor::button",
-                "//span[contains(.,'Tampilkan')]/ancestor::button",
-                "//span[contains(.,'balasan')]/ancestor::button",
-                "//span[contains(.,'Balasan')]/ancestor::button",
-            ]
-
-            for _ in range(3):  # 3 ronde per iterasi scroll
-                clicked_any = False
-                for xp in xpaths:
-                    try:
-                        btns = driver.find_elements(By.XPATH, xp)
-                        for btn in btns[:12]:
-                            try:
-                                driver.execute_script("arguments[0].click();", btn)
-                                clicked_any = True
-                                time.sleep(0.20)
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
-
-                if not clicked_any:
-                    break
-                time.sleep(0.25)
-
-        def collect_replies_once():
-            articles = driver.find_elements(By.CSS_SELECTOR, "article")
-            for art in articles:
-                try:
-                    # skip artikel yang mengandung status tweet utama
-                    try:
-                        is_main = bool(art.find_elements(By.XPATH, f".//a[contains(@href,'/status/{tweet_id}')]"))
-                        if is_main:
-                            continue
-                    except Exception:
-                        pass
-
-                    blocks = art.find_elements(By.CSS_SELECTOR, "div[data-testid='tweetText']")
-                    if not blocks:
-                        continue
-
-                    txt = norm(" ".join([b.text for b in blocks]))
-                    if not txt:
-                        continue
-
-                    sid = get_status_id(art)
-
-                    # key utama: status_id, fallback: teks
-                    key = f"id:{sid}" if sid else f"tx:{txt}"
-                    if key in seen_keys:
-                        continue
-
-                    seen_keys.add(key)
-                    replies.append(txt)
-                except Exception:
+                # skip tweet utama
+                if art.locator(f"a[href*='/status/{tweet_id}']").count() > 0:
                     continue
 
-        # initial
-        click_expand_buttons_aggressive()
-        collect_replies_once()
+                blocks = art.locator("div[data-testid='tweetText']")
+                if blocks.count() == 0:
+                    continue
 
-        stagnant_rounds = 0
-        max_stagnant = 25  # lebih ngotot
-        last_count = len(replies)
+                txt = " ".join(blocks.all_inner_texts()).strip()
+                if not txt:
+                    continue
 
-        while len(replies) < REPLY_LIMIT and stagnant_rounds < max_stagnant:
-            # scroll ke article terakhir (lebih stabil daripada scrollBy angka tetap)
-            try:
-                articles = driver.find_elements(By.CSS_SELECTOR, "article")
-                if articles:
-                    driver.execute_script("arguments[0].scrollIntoView({block:'end'});", articles[-1])
-                else:
-                    driver.execute_script("window.scrollBy(0, 900);")
-            except Exception:
-                driver.execute_script("window.scrollBy(0, 900);")
+                # dedup by status id
+                sid = None
+                links = art.locator("a[href*='/status/']")
+                for j in range(links.count()):
+                    href = links.nth(j).get_attribute("href") or ""
+                    m = re.search(r"/status/(\d+)", href)
+                    if m:
+                        sid = m.group(1)
+                        break
 
-            time.sleep(0.8)
+                key = f"id:{sid}" if sid else f"tx:{txt}"
+                if key in seen:
+                    continue
 
-            click_expand_buttons_aggressive()
-            collect_replies_once()
+                seen.add(key)
+                replies.append(txt)
 
-            # tunggu sedikit untuk loading tambahan
-            time.sleep(0.4)
+        stagnant = 0
+        last_count = 0
+
+        while len(replies) < REPLY_LIMIT and stagnant < 25:
+            page.mouse.wheel(0, 4000)
+            page.wait_for_timeout(2500)
+
+            collect_replies()
+            # klik expand replies
+            for label in ["Show", "Lihat", "Tampilkan", "Balasan", "replies"]:
+                btns = page.locator(f"button:has-text('{label}')")
+                for i in range(min(btns.count(), 8)):
+                    try:
+                        btns.nth(i).click(timeout=500)
+                        page.wait_for_timeout(200)
+                    except Exception:
+                        pass
 
             if len(replies) <= last_count:
-                stagnant_rounds += 1
+                stagnant += 1
             else:
-                stagnant_rounds = 0
+                stagnant = 0
                 last_count = len(replies)
 
+        browser.close()
         return main_tweet, replies[:REPLY_LIMIT]
 
-    finally:
-        driver.quit()
 
 
 TFIDF_STOPWORDS = {
@@ -500,9 +418,9 @@ if run_btn:
         st.warning("Link tweet tidak valid. Pastikan formatnya ada /status/<id>.")
         st.stop()
 
-    with st.spinner("Scraping replies via Selenium..."):
+    with st.spinner("Scraping replies via Playwright..."):
         try:
-            main_tweet, replies = scrape_replies_selenium(tweet_url=tweet_url)
+            main_tweet, replies = scrape_replies_playwright(tweet_url=tweet_url)
             st.session_state["main_tweet"] = main_tweet
             main_tweet_box.write(main_tweet if main_tweet else "(Teks tweet utama tidak terbaca)")
 
