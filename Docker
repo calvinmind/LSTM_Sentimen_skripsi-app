@@ -1,5 +1,8 @@
 FROM mcr.microsoft.com/playwright/python:v1.41.2-jammy
 
+# remove unused browsers (BIG size saver)
+RUN rm -rf /ms-playwright/firefox* /ms-playwright/webkit*
+
 WORKDIR /app
 
 COPY requirements.txt .
