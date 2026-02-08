@@ -239,11 +239,10 @@ def scrape_replies_playwright(tweet_url: str):
 
         replies = []
         seen = set()
-
+        
         def collect_replies():
-            articles = page.locator("article")
-            for i in range(articles.count()):
-                art = articles.nth(i)
+            articles = page.locator("article").all()[:50]
+            for art in articles:
 
                 # skip tweet utama
                 if art.locator(f"a[href*='/status/{tweet_id}']").count() > 0:
@@ -277,9 +276,11 @@ def scrape_replies_playwright(tweet_url: str):
         stagnant = 0
         last_count = 0
 
+        page.wait_for_load_state("networkidle", timeout=30000)
+
         while len(replies) < REPLY_LIMIT and stagnant < 25:
-            page.mouse.wheel(0, 4000)
-            page.wait_for_timeout(2500)
+            page.mouse.wheel(0, 2000)
+            page.wait_for_timeout(3000)
 
             collect_replies()
             # klik expand replies
