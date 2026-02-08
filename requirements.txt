@@ -4,6 +4,7 @@ numpy==1.24.3
 pandas==2.3.0
 scikit_learn==1.7.0
 selenium==4.16.0
-streamlit==1.53.1
+streamlit==1.52.1
 tensorflow==2.13.1
 webdriver_manager==4.0.2
+
