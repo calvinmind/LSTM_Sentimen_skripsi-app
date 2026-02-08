@@ -1,0 +1,90 @@
+[
+  {
+    "domain": ".x.com",
+    "name": "guest_id_marketing",
+    "value": "v1%3A176155094492316071",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  },
+  {
+    "domain": ".x.com",
+    "name": "guest_id_ads",
+    "value": "v1%3A176155094492316071",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  },
+  {
+    "domain": ".x.com",
+    "name": "guest_id",
+    "value": "v1%3A176155094492316071",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  },
+  {
+    "domain": ".x.com",
+    "name": "kdt",
+    "value": "AMxpe6BLkoIl2QxwtwLrvlDKZt0TjE1mhxfW5XMb",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  },
+  {
+    "domain": ".x.com",
+    "name": "twid",
+    "value": "u%3D1998989289586409472",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  },
+  {
+    "domain": ".x.com",
+    "name": "ct0",
+    "value": "07fa56e55e52981f664ccb741663ef98ac12f1147b869e100955d1bbd19c0bdd88555e63074f190a56ff31af576056e621be32038e7d94e6e0d74f5b68ea593bde160c9f1b60ac750194890d3744ee9a",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  },
+  {
+    "domain": ".x.com",
+    "name": "auth_token",
+    "value": "71cf2a3a495d0f9f7003a178a44ffa814c7bf942",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  },
+  {
+    "domain": ".x.com",
+    "name": "personalization_id",
+    "value": "v1_6123YURJJIKPhpsyR54xHQ==",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  },
+  {
+    "domain": ".x.com",
+    "name": "lang",
+    "value": "en",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  },
+  {
+    "domain": ".x.com",
+    "name": "__cf_bm",
+    "value": "oyk9.4D5OL76SBUcvpzYi.AX0XDBdCOR1oZbt6gKTFQ-1770513206.9146473-1.0.1.1-1QpIQmJoerSu95DCThnjZYV8cCxwbJu8SaSs6rEgl0Xh1YVa92oXj9JxWsDAUS68kXf1.JIWrwAjIHklAeSOYwhs0XV1Pb6mn4Hh2K9pwUQuWlsRv4V1yINPaE5Sx1t4",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  },
+  {
+    "domain": ".x.com",
+    "name": "__cuid",
+    "value": "a518be645ffa4dc4aae488cd52b4e2c2",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false
+  }
+]

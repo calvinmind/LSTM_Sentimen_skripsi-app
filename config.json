@@ -1,0 +1,8 @@
+{
+  "max_len": 100,
+  "labels": [
+    "negative",
+    "neutral",
+    "positive"
+  ]
+}
