@@ -433,6 +433,8 @@ def top_words_tfidf(texts, top_n=5):
 def load_artifacts():
     model = tf.keras.models.load_model(ARTIFACT_MODEL_PATH, compile=False)
 
+    model.build((None, MAX_LEN))
+    
     with open(ARTIFACT_TOKENIZER_PATH, "rb") as f:
         tokenizer = pickle.load(f)
 
@@ -550,4 +552,5 @@ if "last_df" in st.session_state:
     )
 
     st.subheader("5 Kata Paling Sering Muncul")
+
     st.dataframe(top_df, use_container_width=True)
