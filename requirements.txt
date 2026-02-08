@@ -7,4 +7,5 @@ selenium==4.16.0
 streamlit==1.52.1
 tensorflow==2.13.1
 webdriver_manager==4.0.2
+keras==2.13.1
 
