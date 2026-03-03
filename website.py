@@ -525,7 +525,10 @@ if run_btn:
     st.session_state["last_df"] = df
     st.session_state["last_counts"] = counts
     st.session_state["last_perc"] = perc
-    st.session_state["last_top_df"] = pd.DataFrame(top5, columns=["Kata", "Frekuensi"])
+    top_df = pd.DataFrame(top5, columns=["Kata", "Frekuensi"])
+    top_df.index = range(1, len(top_df) + 1)
+    st.session_state["last_top_df"] = top_df
+    
 
 if "last_df" in st.session_state:
     df = st.session_state["last_df"]
@@ -570,5 +573,6 @@ if "last_df" in st.session_state:
 
     st.subheader("5 Kata Paling Sering Muncul")
     st.dataframe(top_df, use_container_width=True)
+
 
 
